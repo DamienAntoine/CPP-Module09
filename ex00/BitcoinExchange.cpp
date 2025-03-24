@@ -1,4 +1,5 @@
 #include "BitcoinExchange.hpp"
+#include <sstream>
 
 BitcoinExchange::BitcoinExchange(const std::string& databaseFile)
 {
@@ -21,7 +22,7 @@ BitcoinExchange& BitcoinExchange::operator=(const BitcoinExchange& other)
 
 void BitcoinExchange::loadDatabase(const std::string& filename)
 {
-	std::ifstream file(filename);
+	std::ifstream file(filename.c_str());
 	if (!file.is_open())
 		throw (InvalidFile());
 
@@ -34,7 +35,12 @@ void BitcoinExchange::loadDatabase(const std::string& filename)
 			std::string date = line.substr(0, comma);
 			std::string valuestr = line.substr(comma + 1);
 			try {
-				float value = std::stof(valuestr);
+				std::istringstream iss(valuestr);
+				float value;
+				iss >> value;
+				if (iss.fail()) {
+					throw std::runtime_error("Not a valid number");
+				}
 				_exchangeRates[date] = value;
 			} catch (const std::exception& e) {}
 		}
@@ -43,13 +49,21 @@ void BitcoinExchange::loadDatabase(const std::string& filename)
 
 void BitcoinExchange::processInputFile(const std::string& inputFile)
 {
-	std::ifstream file(inputFile);
+	std::ifstream file(inputFile.c_str());
 	if (!file.is_open())
 		throw(InvalidFile());
 
 	std::string line;
+	bool firstLine = true;
 	while (getline(file, line))
 	{
+		if (firstLine)
+		{
+			firstLine = false;
+			if (line.find("date") != std::string::npos)
+				continue;
+		}
+
 		size_t pipe = line.find('|');
 		if (pipe == std::string::npos)
 		{
@@ -58,6 +72,10 @@ void BitcoinExchange::processInputFile(const std::string& inputFile)
 		}
 
 		std::string date = line.substr(0, pipe);
+
+		date.erase(0, date.find_first_not_of(" \t"));
+		date.erase(date.find_last_not_of(" \t") + 1);
+
 		if (isValidDate(date) == false)
 		{
 			std::cerr << "Error: bad input => " << date << std::endl;
@@ -67,7 +85,10 @@ void BitcoinExchange::processInputFile(const std::string& inputFile)
 		std::string valuestr = line.substr(pipe + 1);
 		float value;
 		try {
-			value = stof(valuestr);
+			std::istringstream iss(valuestr);
+			iss >> value;
+			if (iss.fail())
+				throw std::runtime_error("Not a valid number");
 		} catch (const std::exception& e) {
 			std::cerr << "Error: bad input => " << valuestr << std::endl;
 			continue;
@@ -84,22 +105,31 @@ void BitcoinExchange::processInputFile(const std::string& inputFile)
 			continue;
 		}
 
-		float rate = getExchangeRate(date);
-		float result = value * rate;
-
-		std::cout << date << " => " << value << " = " << result << std::endl;
+		try {
+			float rate = getExchangeRate(date);
+			float result = value * rate;
+			std::cout << date << " => " << value << " = " << result << std::endl;
+		} catch (const std::exception& e) {
+			std::cerr << e.what() << std::endl;
+			continue ;
+		}
 	}
 }
 
 float BitcoinExchange::getExchangeRate(const std::string& date) const
 {
-	//If the date used as input does not exist in your DB,
-	//then you must use the closest date contained in your DB.
-	//Be careful to use the closest previous date, not the next one.
+	std::map<std::string, float>::const_iterator iterator = _exchangeRates.find(date);
 
-	//Check if the exact date exists in _exchangeRates map
-	//If not, find the closest previous date in the map
-	//Return the exchange rate for that date
+	if (iterator != _exchangeRates.end())
+		return (iterator->second);
+
+	iterator = _exchangeRates.upper_bound(date);
+
+	if (iterator == _exchangeRates.begin())
+		throw InvalidDate();
+
+	iterator--;
+	return (iterator->second);
 }
 
 bool BitcoinExchange::isValidDate(const std::string& date) const
@@ -108,9 +138,17 @@ bool BitcoinExchange::isValidDate(const std::string& date) const
 		return false;
 
 	try {
-		int year = std::stoi(date.substr(0, 4));
-		int month = std::stoi(date.substr(5, 2));
-		int day = std::stoi(date.substr(8, 2));
+		std::istringstream iss_year(date.substr(0, 4));
+		std::istringstream iss_month(date.substr(5, 2));
+		std::istringstream iss_day(date.substr(8, 2));
+
+		int year, month, day;
+		iss_year >> year;
+		iss_month >> month;
+		iss_day >> day;
+
+		if (iss_year.fail() || iss_month.fail() || iss_day.fail())
+			return false;
 
 		if (year < 2009 || year > 2025)
 			return (false);
@@ -143,4 +181,9 @@ bool BitcoinExchange::isValidDate(const std::string& date) const
 const char* BitcoinExchange::InvalidFile::what() const throw()
 {
 	return ("Error: could not open file.");
+}
+
+const char* BitcoinExchange::InvalidDate::what() const throw()
+{
+	return ("Error: no data available for this date.");
 }
