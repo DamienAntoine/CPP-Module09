@@ -26,26 +26,27 @@ const PmergeMe& PmergeMe::operator=(const PmergeMe& other)
 	return (*this);
 }
 
-void	PmergeMe::sortVector()
+// form sorted pairs
+void PmergeMe::formVectorPairs(const std::vector<int>& input, std::vector<std::pair<int, int>>& pairs, int& oddElement)
 {
-	clock_t start = clock();
-
-	//first form sorted pairs
-	std::vector<std::pair<int, int>> pairs;
 	size_t i = 0;
-	while (i < _vecContainer.size() - 1)
+	while (i < input.size() - 1)
 	{
-		if (_vecContainer[i] <= _vecContainer[i+1])
-			pairs.push_back(std::make_pair(_vecContainer[i], _vecContainer[i+1]));
+		if (input[i] <= input[i+1])
+			pairs.push_back(std::make_pair(input[i], input[i+1]));
 		else
-			pairs.push_back(std::make_pair(_vecContainer[i+1], _vecContainer[i]));
+			pairs.push_back(std::make_pair(input[i+1], input[i]));
 		i += 2;
 	}
 
-	//third extract larger number (second element for each pair) while remembering pairs
-	std::vector<int> mainChain;
-	std::vector<int> smallerElements;
+	oddElement = -1;
+	if (input.size() % 2 != 0)
+		oddElement = input[input.size() - 1];
+}
 
+// extract from pairs into two groups (smaller and bigger numbers)
+void PmergeMe::extractVectorElements(const std::vector<std::pair<int, int>>& pairs, std::vector<int>& mainChain, std::vector<int>& smallerElements)
+{
 	std::vector<std::pair<int, int> >::const_iterator it = pairs.begin();
 	while (it != pairs.end())
 	{
@@ -53,39 +54,15 @@ void	PmergeMe::sortVector()
 		mainChain.push_back((*it).second);
 		++it;
 	}
+}
 
-	int oddElement = -1;
-	if (_vecContainer.size() % 2 != 0) //element not paired if its an odd number of elements
-		oddElement = _vecContainer[_vecContainer.size() - 1];
-
-	//fourth sort larger numbers
-	if (mainChain.size() > 1)
-	{
-		std::vector<int> temp = mainChain;
-
-		mainChain.clear();
-
-		size_t j = 0;
-		while (j < temp.size())
-		{
-			_vecContainer.push_back(temp[j]);
-			++j;
-		}
-		sortVector();
-
-		mainChain = _vecContainer;//put back to mainchain
-		_vecContainer.clear();
-	}
-
-	//fifth insert smallest number right before its pair
-	std::vector<int> sortedChain = mainChain;
-	if (!smallerElements.empty())
-		sortedChain.insert(sortedChain.begin(), smallerElements[0]);
-
-	//insert rest of numbers with binary search
+// get insertion order
+std::vector<size_t> PmergeMe::VectorJacobsthalSequence(size_t size)
+{
 	std::vector<size_t> insertionOrder;
 	size_t prev = 1, curr = 1;
-	while (curr < smallerElements.size())
+
+	while (curr < size)
 	{
 		insertionOrder.push_back(curr);
 		size_t next = 2 * prev + curr;
@@ -93,45 +70,103 @@ void	PmergeMe::sortVector()
 		curr = next;
 	}
 
-	// add remaining numbers
-	for (size_t i = 1; i < smallerElements.size(); ++i)
-	{
+	for (size_t i = 1; i < size; ++i) {
 		if (std::find(insertionOrder.begin(), insertionOrder.end(), i) == insertionOrder.end())
 			insertionOrder.push_back(i);
 	}
 
-	// insert smaller numbers
+	return insertionOrder;
+}
+
+// inset smaller numbers back
+void PmergeMe::insertSmallerElements(std::vector<int>& sortedChain, const std::vector<int>& smallerElements)
+{
+	if (!smallerElements.empty())
+		sortedChain.insert(sortedChain.begin(), smallerElements[0]);
+
+	std::vector<size_t> insertionOrder = VectorJacobsthalSequence(smallerElements.size());
+
 	for (size_t i = 0; i < insertionOrder.size(); ++i)
 	{
 		size_t idx = insertionOrder[i];
 		int val = smallerElements[idx];
 
-		// find where to insert
 		std::vector<int>::iterator pos = std::lower_bound(sortedChain.begin(), sortedChain.end(), val);
 		sortedChain.insert(pos, val);
 	}
+}
 
-	//add odd element back
+// add last element if odd number
+void PmergeMe::insertOddElement(std::vector<int>& sortedChain, int oddElement)
+{
 	if (oddElement != -1)
 	{
-		std::vector<int>::iterator pos = std::lower_bound(
-			sortedChain.begin(), sortedChain.end(), oddElement);
+		std::vector<int>::iterator pos = std::lower_bound(sortedChain.begin(), sortedChain.end(), oddElement);
 		sortedChain.insert(pos, oddElement);
 	}
+}
 
-	_vecContainer = sortedChain;
+void PmergeMe::sortVectorHelper(std::vector<int>& vec)
+{
+	if (vec.size() <= 1)
+		return;
+
+	int	oddElement;
+	std::vector<std::pair<int, int>>	pairs;
+	formVectorPairs(vec, pairs, oddElement);
+
+	std::vector<int> mainChain, smallerElements;
+	extractVectorElements(pairs, mainChain, smallerElements);
+
+	if (mainChain.size() > 1)
+		sortVectorHelper(mainChain);
+
+	std::vector<int> sortedChain = mainChain;
+
+	insertSmallerElements(sortedChain, smallerElements);
+	insertOddElement(sortedChain, oddElement);
+
+	vec = sortedChain;
+}
+
+void PmergeMe::sortVector()
+{
+	clock_t start = clock();
+	sortVectorHelper(_vecContainer);
 	_vectorTimer = (double)(clock() - start) / CLOCKS_PER_SEC;
+}
+
+
+
+void PmergeMe::formListPairs(const std::list<int>& input, std::list<std::pair<int, int>>& pairs, int& oddElement)
+{
+	std::list<int>::const_iterator it = input.begin();
+
+	while (std::next(it) != input.end())
+	{
+		int first = *it;
+		int second = *std::next(it);
+
+		if (first <= second)
+			pairs.push_back(std::make_pair(first, second));
+		else
+			pairs.push_back(std::make_pair(second, first));
+
+		std::advance(it, 2);
+	}
+
+	oddElement = -1;
+	if (input.size() % 2 != 0) {
+		std::list<int>::const_iterator last = input.begin();
+		std::advance(last, input.size() - 1);
+		oddElement = *last;
+	}
 }
 
 void	PmergeMe::sortList()
 {
 	clock_t start = clock();
-
-    // Implement Ford-Johnson using list operations
-    // - Random access is O(n)
-    // - Binary search requires iteration
-    // - Insertions are O(1) with iterator
-
+	sortListHelper(_listContainer);
 	_listTimer = (double)(clock() - start) / CLOCKS_PER_SEC;
 }
 
