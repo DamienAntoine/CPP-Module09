@@ -27,7 +27,7 @@ const PmergeMe& PmergeMe::operator=(const PmergeMe& other)
 }
 
 // form sorted pairs
-void PmergeMe::formVectorPairs(const std::vector<int>& input, std::vector<std::pair<int, int>>& pairs, int& oddElement)
+void PmergeMe::formVectorPairs(const std::vector<int>& input, std::vector<std::pair<int, int> >& pairs, int& oddElement)
 {
 	size_t i = 0;
 	while (i < input.size() - 1)
@@ -45,7 +45,7 @@ void PmergeMe::formVectorPairs(const std::vector<int>& input, std::vector<std::p
 }
 
 // extract from pairs into two groups (smaller and bigger numbers)
-void PmergeMe::extractVectorElements(const std::vector<std::pair<int, int>>& pairs, std::vector<int>& mainChain, std::vector<int>& smallerElements)
+void PmergeMe::extractVectorElements(const std::vector<std::pair<int, int> >& pairs, std::vector<int>& mainChain, std::vector<int>& smallerElements)
 {
 	std::vector<std::pair<int, int> >::const_iterator it = pairs.begin();
 	while (it != pairs.end())
@@ -70,7 +70,8 @@ std::vector<size_t> PmergeMe::VectorJacobsthalSequence(size_t size)
 		curr = next;
 	}
 
-	for (size_t i = 1; i < size; ++i) {
+	for (size_t i = 1; i < size; ++i)
+	{
 		if (std::find(insertionOrder.begin(), insertionOrder.end(), i) == insertionOrder.end())
 			insertionOrder.push_back(i);
 	}
@@ -82,7 +83,7 @@ std::vector<size_t> PmergeMe::VectorJacobsthalSequence(size_t size)
 void PmergeMe::insertSmallerElements(std::vector<int>& sortedChain, const std::vector<int>& smallerElements)
 {
 	if (!smallerElements.empty())
-		sortedChain.insert(sortedChain.begin(), smallerElements[0]);
+		sortedChain.insert(sortedChain.begin(), *smallerElements.begin());
 
 	std::vector<size_t> insertionOrder = VectorJacobsthalSequence(smallerElements.size());
 
@@ -112,7 +113,7 @@ void PmergeMe::sortVectorHelper(std::vector<int>& vec)
 		return;
 
 	int	oddElement;
-	std::vector<std::pair<int, int>>	pairs;
+	std::vector<std::pair<int, int> >	pairs;
 	formVectorPairs(vec, pairs, oddElement);
 
 	std::vector<int> mainChain, smallerElements;
@@ -138,14 +139,21 @@ void PmergeMe::sortVector()
 
 
 
-void PmergeMe::formListPairs(const std::list<int>& input, std::list<std::pair<int, int>>& pairs, int& oddElement)
+void PmergeMe::formListPairs(const std::list<int>& input, std::list<std::pair<int, int> >& pairs, int& oddElement)
 {
 	std::list<int>::const_iterator it = input.begin();
 
-	while (std::next(it) != input.end())
+	while (it != input.end())
 	{
 		int first = *it;
-		int second = *std::next(it);
+
+		std::list<int>::const_iterator temp_it = it;
+		++temp_it;
+
+		if (temp_it == input.end())
+			break ;
+
+		int second = *temp_it;
 
 		if (first <= second)
 			pairs.push_back(std::make_pair(first, second));
@@ -156,11 +164,99 @@ void PmergeMe::formListPairs(const std::list<int>& input, std::list<std::pair<in
 	}
 
 	oddElement = -1;
-	if (input.size() % 2 != 0) {
+	if (input.size() % 2 != 0)
+	{
 		std::list<int>::const_iterator last = input.begin();
 		std::advance(last, input.size() - 1);
 		oddElement = *last;
 	}
+}
+
+void	PmergeMe::extractListElements(const std::list<std::pair<int, int> >& pairs, std::list<int>& mainChain, std::list<int>& smallerElements)
+{
+	std::list<std::pair<int, int> >::const_iterator it = pairs.begin();
+	while (it != pairs.end())
+	{
+		smallerElements.push_back((*it).first);
+		mainChain.push_back((*it).second);
+		++it;
+	}
+}
+
+std::list<size_t>	PmergeMe::ListJacobsthalSequence(size_t size)
+{
+	std::list<size_t> insertionOrder;
+	size_t prev = 1, curr = 1;
+
+	while (curr < size)
+	{
+		insertionOrder.push_back(curr);
+		size_t next = 2 * prev + curr;
+		prev = curr;
+		curr = next;
+	}
+
+	for (size_t i = 1; i < size; ++i)
+	{
+		if (std::find(insertionOrder.begin(), insertionOrder.end(), i) == insertionOrder.end())
+			insertionOrder.push_back(i);
+	}
+
+	return insertionOrder;
+}
+
+void	PmergeMe::insertSmallerElementsList(std::list<int>& sortedChain, const std::list<int>& smallerElements)
+{
+	if (!smallerElements.empty())
+		sortedChain.insert(sortedChain.begin(), *smallerElements.begin());
+
+	std::list<size_t> insertionOrder = ListJacobsthalSequence(smallerElements.size());
+
+	for (size_t i = 0; i < insertionOrder.size(); ++i)
+	{
+		std::list<size_t>::iterator idxIt = insertionOrder.begin();
+		std::advance(idxIt, i);
+		size_t idx = *idxIt;
+
+		std::list<int>::const_iterator valIt = smallerElements.begin();
+		std::advance(valIt, idx);
+		int val = *valIt;
+
+		std::list<int>::iterator pos = std::lower_bound(sortedChain.begin(), sortedChain.end(), val);
+		sortedChain.insert(pos, val);
+	}
+}
+
+void	PmergeMe::insertOddElementList(std::list<int>& sortedChain, int oddElement)
+{
+	if (oddElement != -1)
+	{
+		std::list<int>::iterator pos = std::lower_bound(sortedChain.begin(), sortedChain.end(), oddElement);
+		sortedChain.insert(pos, oddElement);
+	}
+}
+
+void	PmergeMe::sortListHelper(std::list<int>& list)
+{
+	if (list.size() <= 1)
+		return;
+
+	int	oddElement;
+	std::list<std::pair<int, int> >	pairs;
+	formListPairs(list, pairs, oddElement);
+
+	std::list<int> mainChain, smallerElements;
+	extractListElements(pairs, mainChain, smallerElements);
+
+	if (mainChain.size() > 1)
+		sortListHelper(mainChain);
+
+	std::list<int> sortedChain = mainChain;
+
+	insertSmallerElementsList(sortedChain, smallerElements);
+	insertOddElementList(sortedChain, oddElement);
+
+	list = sortedChain;
 }
 
 void	PmergeMe::sortList()
@@ -172,5 +268,30 @@ void	PmergeMe::sortList()
 
 void	PmergeMe::printRes()
 {
+	std::cout << "After:  ";
+	size_t limit = std::min(_vecContainer.size(), static_cast<size_t>(10));
 
+	for (size_t i = 0; i < limit; ++i)
+		std::cout << _vecContainer[i] << " ";
+
+	if (_vecContainer.size() > 10) std::cout << "...";
+	std::cout << std::endl;
+
+	std::cout << std::endl;
+	std::cout << "Number of elements: " << _vecContainer.size() << std::endl;
+
+	std::cout	<< std::fixed << std::setprecision(9);
+	std::cout	<< "Time to process a range of " << _vecContainer.size()
+				<< " elements with std::vector : " << _vectorTimer
+				<< " seconds" << std::endl;
+
+	std::cout	<< "Time to process a range of " << _listContainer.size()
+				<< " elements with std::list : " << _listTimer
+				<< " seconds" << std::endl;
+}
+
+void	PmergeMe::setContainers(int number)
+{
+	_vecContainer.push_back(number);
+	_listContainer.push_back(number);
 }
