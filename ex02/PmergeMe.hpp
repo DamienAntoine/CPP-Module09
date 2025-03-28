@@ -39,6 +39,9 @@ class PmergeMe
 
 		const PmergeMe& operator=(const PmergeMe& other);
 
+		bool	isValidInteger(const char* str);
+
+		void	printBefore() const;
 		void	setContainers(int number);
 		void	sortVector();
 		void	sortList();

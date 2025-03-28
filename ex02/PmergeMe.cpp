@@ -26,6 +26,15 @@ const PmergeMe& PmergeMe::operator=(const PmergeMe& other)
 	return (*this);
 }
 
+bool PmergeMe::isValidInteger(const char* str)
+{
+	if (!str || !*str) return false;
+
+	for (int i = 0; str[i]; i++)
+		if (!std::isdigit(str[i])) return false;
+	return true;
+}
+
 // form sorted pairs
 void PmergeMe::formVectorPairs(const std::vector<int>& input, std::vector<std::pair<int, int> >& pairs, int& oddElement)
 {
@@ -277,9 +286,6 @@ void	PmergeMe::printRes()
 	if (_vecContainer.size() > 10) std::cout << "...";
 	std::cout << std::endl;
 
-	std::cout << std::endl;
-	std::cout << "Number of elements: " << _vecContainer.size() << std::endl;
-
 	std::cout	<< std::fixed << std::setprecision(9);
 	std::cout	<< "Time to process a range of " << _vecContainer.size()
 				<< " elements with std::vector : " << _vectorTimer
@@ -288,10 +294,26 @@ void	PmergeMe::printRes()
 	std::cout	<< "Time to process a range of " << _listContainer.size()
 				<< " elements with std::list : " << _listTimer
 				<< " seconds" << std::endl;
+
+	std::cout << std::endl;
+	std::cout << "Number of elements: " << _vecContainer.size() << std::endl;
 }
 
 void	PmergeMe::setContainers(int number)
 {
 	_vecContainer.push_back(number);
 	_listContainer.push_back(number);
+}
+
+void PmergeMe::printBefore() const
+{
+	std::cout << "Before: ";
+	size_t limit = std::min(_vecContainer.size(), static_cast<size_t>(10));
+
+	for (size_t i = 0; i < limit; ++i)
+		std::cout << _vecContainer[i] << " ";
+
+	if (_vecContainer.size() > 10)
+		std::cout << "...";
+	std::cout << std::endl;
 }

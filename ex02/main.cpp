@@ -10,9 +10,13 @@ int main (int argc, char **argv)
 
 	PmergeMe sorter;
 	int i = 1;
-	std::cout << "Before: ";
 	while (i < argc)
 	{
+		if (!sorter.isValidInteger(argv[i]))
+		{
+			std::cerr << "Error: Only positive integers allowed" << std::endl;
+			return 1;
+		}
 		try {
 			int numbers = std::atoi(argv[i]);
 			if (numbers <= 0)
@@ -21,14 +25,14 @@ int main (int argc, char **argv)
 				return (1);
 			}
 			sorter.setContainers(numbers);
-			std::cout << numbers << " ";
 		} catch (...) {
 			std::cerr << "Error: Invalid Input" << std::endl;
 			return (1);
 		}
 		i++;
 	}
-	std::cout << std::endl;
+
+	sorter.printBefore();
 
 	sorter.sortVector();
 	sorter.sortList();
